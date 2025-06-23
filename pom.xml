@@ -1,115 +1,175 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.example</groupId>
-    <artifactId>demo1</artifactId>
+    <artifactId>demo</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>demo1</name>
 
     <properties>
+        <openjfx.version>24.0.1</openjfx.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.10.0</junit.version>
-        <mainClass>org.example.demo1.HelloApplication</mainClass>
+        <start-class>dev.cat.RaffleApplication</start-class>
+        <openjfx.jmods.download.url>
+            https://download2.gluonhq.com/openjfx/${openjfx.version}/openjfx-${openjfx.version}_${osname}-${jfxdownload.os.arch}_bin-jmods.zip
+        </openjfx.jmods.download.url>
+        <openjfx.sdk.download.url>
+            https://download2.gluonhq.com/openjfx/${openjfx.version}/openjfx-${openjfx.version}_${osname}-${jfxdownload.os.arch}_bin-sdk.zip
+        </openjfx.sdk.download.url>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>22-ea+11</version>
+            <version>${openjfx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>22-ea+11</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
+            <version>${openjfx.version}</version>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>OS.windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <osname>windows</osname>
+                <jfxdownload.os.arch>x64</jfxdownload.os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>OS.linux</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                </os>
+            </activation>
+            <properties>
+                <osname>linux</osname>
+                <jfxdownload.os.arch>aarch64</jfxdownload.os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>OS.osx</id>
+            <activation>
+                <os>
+                    <name>mac os x</name>
+                </os>
+            </activation>
+            <properties>
+                <osname>osx</osname>
+                <jfxdownload.os.arch>aarch64</jfxdownload.os.arch>
+            </properties>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>22</source>
-                    <target>22</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <version>0.0.8</version>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.13.0</version>
                 <executions>
                     <execution>
-                        <!-- Default configuration for running with: mvn clean javafx:run -->
-                        <id>default-cli</id>
+                        <id>fetch-openjfx-sdk</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
                         <configuration>
-                            <mainClass>org.example.demo1/org.example.demo1.HelloApplication</mainClass>
-                            <launcher>app</launcher>
-                            <jlinkZipName>app</jlinkZipName>
-                            <jlinkImageName>app</jlinkImageName>
-                            <noManPages>true</noManPages>
-                            <stripDebug>true</stripDebug>
-                            <noHeaderFiles>true</noHeaderFiles>
+                            <url>${openjfx.sdk.download.url}</url>
+                            <unpack>true</unpack>
+                            <outputDirectory>openjfx/</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>fetch-openjfx-jmods</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>${openjfx.jmods.download.url}</url>
+                            <unpack>true</unpack>
+                            <outputDirectory>openjfx/</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-            <!--Maven Jar-->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-javafx-libs-for-native-image</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/native</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>openjfx/javafx-sdk-${openjfx.version}/lib/</directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <version>0.10.6</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>build-native</id>
+                        <goals>
+                            <goal>compile-no-fork</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <imageName>hello</imageName>
+                    <verbose>true</verbose>
+                    <outputDirectory>target/native</outputDirectory>
+                    <mainClass>org.example.demo1.HelloApplication</mainClass>
+                    <buildArgs>
+                        <buildArg>-H:ConfigurationFileDirectories=native-config/${osname}/</buildArg>
+                    </buildArgs>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.1</version>
+                <version>3.4.2</version>
                 <configuration>
-                    <skipIfEmpty>true</skipIfEmpty>
                     <archive>
-                        <manifestEntries>
-                            <Main-Class>${mainClass}</Main-Class>
-                            <Automatic-Module-Name>${project.artifactId}</Automatic-Module-Name>
-                            <Program-Version>${project.version}</Program-Version>
-                            <Implementation-Version>${project.version}</Implementation-Version>
-                        </manifestEntries>
                         <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>${mainClass}</mainClass>
+                            <mainClass>org.example.demo1.HelloApplication</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.6.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/modules</outputDirectory>
-                            <includeScope>runtime</includeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
+
 </project>
